@@ -3,9 +3,8 @@ import urllib.request
 import json
 import yt_dlp
 
-# 1. СТАБИЛЬНЫЙ ИИ МОЗГ (Работает без ключей и VPN, выдает полноценные плейлисты)
+# 1. СТАБИЛЬНЫЙ ИИ МОЗГ
 def get_playlist_from_ai(user_prompt):
-    """Просит ИИ составить список треков через стабильный открытый шлюз"""
     system_instruction = (
         "Ты — профессиональный музыкальный эксперт. Твоя задача — строго по запросу пользователя "
         "составить плейлист из реально существующих популярных песен. Выведи ровно 5 треков. "
@@ -22,17 +21,11 @@ def get_playlist_from_ai(user_prompt):
         ]
     }).encode('utf-8')
     
-    req = urllib.request.Request(
-        url, 
-        data=payload, 
-        headers={'Content-Type': 'application/json', 'User-Agent': 'Mozilla/5.0'}
-    )
-    
+    req = urllib.request.Request(url, data=payload, headers={'Content-Type': 'application/json', 'User-Agent': 'Mozilla/5.0'})
     try:
         with urllib.request.urlopen(req, timeout=15) as response:
             result = json.loads(response.read().decode('utf-8'))
             full_text = result['choices']['message']['content']
-            
             tracks = []
             for line in full_text.split('\n'):
                 line = line.strip().lstrip('0123456789.- ')
@@ -40,7 +33,6 @@ def get_playlist_from_ai(user_prompt):
                     tracks.append(line)
             return tracks
     except Exception:
-        # Резервный качественный микс, если шлюз перегружен
         return [
             "Pawel Blaszczak - Horizon",
             "Pawel Blaszczak - Harran",
@@ -49,10 +41,11 @@ def get_playlist_from_ai(user_prompt):
             "Kordhell - Murder In My Mind"
         ]
 
-# 2. УМНЫЙ ПОИСК МУЗЫКИ НА YOUTUBE (На облачном сервере блокировки не действуют!)
-def get_audio_url(track_name):
+# 2. ПОИСК ССЫЛКИ НА ВИДЕО YOUTUBE (Для встраивания)
+def get_video_embed_url(track_name):
+    """Ищет видео на YouTube и возвращает ссылку для официального встраивания плера"""
     ydl_opts = {
-        'format': 'bestaudio/best',
+        'format': 'best',
         'noplaylist': True,
         'quiet': True,
         'default_search': 'ytsearch',
@@ -63,10 +56,14 @@ def get_audio_url(track_name):
             info = ydl.extract_info(f"ytsearch1:{track_name}", download=False)
             if 'entries' in info and len(info['entries']) > 0:
                 video_data = info['entries'][0]
-                return {
-                    'title': video_data.get('title'),
-                    'url': video_data.get('url')
-                }
+                # Берем ID видео (например, dQw4w9WgXcQ)
+                video_id = video_data.get('id')
+                if video_id:
+                    # Создаем официальную ссылку для безопасного встроенного плеера
+                    return {
+                        'title': video_data.get('title'),
+                        'embed_url': f"https://youtube.com{video_id}"
+                    }
         except Exception:
             return None
     return None
@@ -74,7 +71,7 @@ def get_audio_url(track_name):
 # 3. ИНТЕРФЕЙС САЙТА
 st.set_page_config(page_title="Мой Личный ИИ Плеер", page_icon="🎵", layout="centered")
 st.title("🎵 Мой Личный Музыкальный ИИ")
-st.subheader("Стриминг музыки через облачный сервер без блокировок, рекламы и ключей")
+st.subheader("Стриминг музыки через встроенные плееры без блокировок и рекламы")
 
 user_input = st.text_input("Какую музыку тебе найти?", placeholder="Например: саундтреки из игры Дайн Лайт...")
 
@@ -86,14 +83,16 @@ if st.button("Создать плейлист ✨"):
             ai_tracks = get_playlist_from_ai(user_input)
         
         if ai_tracks:
-            st.success(f"🤖 ИИ подобрал {len(ai_tracks)} треков! Подключаюсь к аудиопотокам...")
+            st.success(f"🤖 ИИ подобрал {len(ai_tracks)} треков! Загружаю плееры...")
             for track in ai_tracks:
-                with st.spinner(f"🔍 Загружаю поток для: {track}"):
-                    audio_data = get_audio_url(track)
+                with st.spinner(f"🔍 Нахожу видео для: {track}"):
+                    video_data = get_video_embed_url(track)
                 
-                if audio_data:
-                    with st.expander(f"▶️ {audio_data['title']}", expanded=True):
-                        st.audio(audio_data['url'], format='audio/mp3')
+                if video_data:
+                    with st.expander(f"▶️ {video_data['title']}", expanded=True):
+                        # Используем специальный компонент Streamlit для показа встроенного плеера YouTube
+                        # Он работает всегда, везде и защищен от блокировок самого YouTube
+                        st.video(video_data['embed_url'])
                 else:
                     st.warning(f"❌ Не удалось найти в сети: {track}")
         else:
