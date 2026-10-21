@@ -4,7 +4,7 @@ import yt_dlp
 
 # 1. СТАБИЛЬНАЯ НАСТРОЙКА ИИ ПОМОЩНИКА
 # Сюда автоматически подставился ваш рабочий ключ
-GEMINI_API_KEY = "AQ.Ab8RN6IJ0FL516KZChcSIaF7APee9v5gf3-8lKn4xCQ1TIiT-w" 
+GEMINI_API_KEY = "AQ.Ab8RN6I3p9q3crB3vmCzP6cfPWZInLMQ22gNonOmYlbZS9BcRg" 
 
 # Настраиваем подключение ИИ напрямую через стабильный метод
 genai.configure(api_key=GEMINI_API_KEY)
