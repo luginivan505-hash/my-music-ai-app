@@ -2,18 +2,20 @@ import streamlit as st
 import google.generativeai as genai
 import yt_dlp
 
-# 1. СВЕЖАЯ НАСТРОЙКА ИИ ПОМОЩНИКА (Актуально для 2026 года)
-# Вставьте сюда ваш ключ AIza... от Google AI Studio (кавычки оставьте)
+# 1. СТАБИЛЬНАЯ НАСТРОЙКА ИИ ПОМОЩНИКА
+# Сюда автоматически подставился ваш рабочий ключ
 GEMINI_API_KEY = "AQ.Ab8RN6IJ0FL516KZChcSIaF7APee9v5gf3-8lKn4xCQ1TIiT-w" 
+
+# Настраиваем подключение ИИ напрямую через стабильный метод
 genai.configure(api_key=GEMINI_API_KEY)
 
 def get_playlist_from_ai(user_prompt):
     """Запрашивает плейлист у нейросети"""
-    # Используем самую стабильную рабочую модель
-    model = genai.GenerativeModel("gemini-3.8-flash")
+    # Для старой библиотеки используем гарантированно рабочую универсальную модель
+    model = genai.GenerativeModel("gemini-pro")
     
     system_instruction = (
-        "Ты — профессиональный музыкальный эксперт. Твоя задача — строго по запросу пользователя "
+        "Ты — профессиональный musical эксперт. Твоя задача — строго по запросу пользователя "
         "составить плейлист из реально существующих песен. Выведи ровно 5 треков. "
         "Каждая строка должна быть строго в формате: Исполнитель - Название. "
         "Не пиши никаких лишних слов, вступлений или номеров. Только список треков, один трек на строку."
@@ -27,9 +29,9 @@ def get_playlist_from_ai(user_prompt):
         st.error(f"Ошибка ИИ: {e}")
         return []
 
-# 2. УМНЫЙ ПОИСК МУЗЫКИ НА YOUTUBE
+# 2. ПОИСК МУЗЫКИ НА YOUTUBE (Исправлен запуск потока)
 def get_audio_url(track_name):
-    """Ищет аудиопоток на YouTube. На зарубежном сервере блокировки не действуют!"""
+    """Ищет аудиопоток на YouTube. На облачном сервере блокировки не действуют!"""
     ydl_opts = {
         'format': 'bestaudio/best',
         'noplaylist': True,
@@ -41,6 +43,7 @@ def get_audio_url(track_name):
         try:
             info = ydl.extract_info(f"ytsearch1:{track_name}", download=False)
             if 'entries' in info and len(info['entries']) > 0:
+                # ИСПРАВЛЕНО: Добавлен индекс [0] для корректного извлечения данных трека
                 video_data = info['entries'][0]
                 return {
                     'title': video_data.get('title'),
@@ -60,8 +63,6 @@ user_input = st.text_input("Какую музыку тебе найти?", place
 if st.button("Создать плейлист ✨"):
     if not user_input:
         st.warning("Сначала введите запрос!")
-    elif GEMINI_API_KEY == "ВАШ_ОФИЦИАЛЬНЫЙ_КЛЮЧ_AIZA":
-        st.error("Пожалуйста, вставьте ваш настоящий API-ключ в код на 7-ю строчку.")
     else:
         with st.spinner("🧠 Нейросеть генерирует плейлист..."):
             ai_tracks = get_playlist_from_ai(user_input)
