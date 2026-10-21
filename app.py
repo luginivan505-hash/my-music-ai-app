@@ -10,7 +10,7 @@ genai.configure(api_key=GEMINI_API_KEY)
 def get_playlist_from_ai(user_prompt):
     """Запрашивает плейлист у нейросети"""
     # Используем самую стабильную рабочую модель
-    model = genai.GenerativeModel("gemini-2.5-flash")
+    model = genai.GenerativeModel("gemini-3.8-flash")
     
     system_instruction = (
         "Ты — профессиональный музыкальный эксперт. Твоя задача — строго по запросу пользователя "
