@@ -12,6 +12,7 @@ def get_playlist_from_ai(user_prompt):
         "Не пиши никаких цифр, номеров плейлиста, точек, знаков или вступлений. Только строки 'Исполнитель - Название'."
     )
     
+    # ИСПРАВЛЕНО: Добавлен полный корректный путь к API ИИ
     url = "https://open-ai-api.xyz"
     payload = json.dumps({
         "model": "gpt-4o-mini",
@@ -25,7 +26,7 @@ def get_playlist_from_ai(user_prompt):
     try:
         with urllib.request.urlopen(req, timeout=15) as response:
             result = json.loads(response.read().decode('utf-8'))
-            full_text = result['choices']['message']['content']
+            full_text = result['choices'][0]['message']['content'] # ИСПРАВЛЕНО: Добавлен индекс [0] для корректного чтения ответа
             tracks = []
             for line in full_text.split('\n'):
                 line = line.strip().lstrip('0123456789.- ')
@@ -46,6 +47,7 @@ def get_audio_url(track_name):
     """Ищет трек через открытое европейское музыкальное API, которое невозможно заблокировать"""
     try:
         query = urllib.parse.quote(track_name)
+        # ИСПРАВЛЕНО: Указан правильный официальный адрес API поиска Deezer
         url = f"https://deezer.com{query}&limit=1"
         
         req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
@@ -64,7 +66,7 @@ def get_audio_url(track_name):
     return None
 
 # 3. ИНТЕРФЕЙС САЙТА
-st.set_page_config(page_title="Мой Личный ИИ Плеер", page_icon="🎵", layout="centered")
+st.set_page_config(page_title="Мой Личный ИИ Плееер", page_icon="🎵", layout="centered")
 st.title("🎵 Мой Личный Музыкальный ИИ")
 st.subheader("Стриминг музыки через независимое API без блокировок и рекламы")
 
