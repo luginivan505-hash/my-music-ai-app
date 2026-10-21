@@ -4,7 +4,7 @@ import yt_dlp
 
 # 1. СВЕЖАЯ НАСТРОЙКА ИИ ПОМОЩНИКА (Актуально для 2026 года)
 # Вставьте сюда ваш ключ AIza... от Google AI Studio (кавычки оставьте)
-GEMINI_API_KEY = "ВАШ_ОФИЦИАЛЬНЫЙ_КЛЮЧ_AIZA" 
+GEMINI_API_KEY = "AQ.Ab8RN6IJ0FL516KZChcSIaF7APee9v5gf3-8lKn4xCQ1TIiT-w" 
 genai.configure(api_key=GEMINI_API_KEY)
 
 def get_playlist_from_ai(user_prompt):
