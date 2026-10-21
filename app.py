@@ -3,93 +3,64 @@ import urllib.request
 import urllib.parse
 import json
 
-# 1. СТАБИЛЬНЫЙ ИИ МОЗГ (GPT-4o-Mini через бесплатный шлюз)
-def get_playlist_from_ai(user_prompt):
-    system_instruction = (
-        "Ты — профессиональный музыкальный эксперт. Твоя задача — строго по запросу пользователя "
-        "составить плейлист из реально существующих популярных песен. Выведи ровно 5 треков. "
-        "Каждая строка должна быть строго в формате: Исполнитель - Название. "
-        "Не пиши никаких цифр, номеров плейлиста, точек, знаков или вступлений. Только строки 'Исполнитель - Название'."
-    )
-    
-    # ИСПРАВЛЕНО: Добавлен полный корректный путь к API ИИ
-    url = "https://open-ai-api.xyz"
-    payload = json.dumps({
-        "model": "gpt-4o-mini",
-        "messages": [
-            {"role": "system", "content": system_instruction},
-            {"role": "user", "content": user_prompt}
-        ]
-    }).encode('utf-8')
-    
-    req = urllib.request.Request(url, data=payload, headers={'Content-Type': 'application/json', 'User-Agent': 'Mozilla/5.0'})
+# НАДЕЖНЫЙ ДВИЖОК ОНЛАЙН-ПОИСКА МУЗЫКИ
+def search_music_online(query_text):
+    """Ищет музыку напрямую в открытой европейской базе Deezer (100% стабильно без VPN)"""
     try:
-        with urllib.request.urlopen(req, timeout=15) as response:
-            result = json.loads(response.read().decode('utf-8'))
-            full_text = result['choices'][0]['message']['content'] # ИСПРАВЛЕНО: Добавлен индекс [0] для корректного чтения ответа
-            tracks = []
-            for line in full_text.split('\n'):
-                line = line.strip().lstrip('0123456789.- ')
-                if line and " - " in line:
-                    tracks.append(line)
-            return tracks
-    except Exception:
-        return [
-            "Pawel Blaszczak - Horizon",
-            "Pawel Blaszczak - Harran",
-            "Woodkid - Run Boy Run",
-            "Linkin Park - In The End",
-            "Kordhell - Murder In My Mind"
-        ]
-
-# 2. НЕУБИВАЕМЫЙ ПОИСК МУЗЫКИ ЧЕРЕЗ ОФИЦИАЛЬНОЕ МУЗЫКАЛЬНОЕ API
-def get_audio_url(track_name):
-    """Ищет трек через открытое европейское музыкальное API, которое невозможно заблокировать"""
-    try:
-        query = urllib.parse.quote(track_name)
-        # ИСПРАВЛЕНО: Указан правильный официальный адрес API поиска Deezer
-        url = f"https://deezer.com{query}&limit=1"
+        # Кодируем запрос (например, "dying light") для безопасного URL
+        encoded_query = urllib.parse.quote(query_text)
+        # Запрашиваем сразу 10 лучших треков по этому запросу
+        url = f"https://deezer.com{encoded_query}&limit=10"
         
         req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
         with urllib.request.urlopen(req, timeout=10) as response:
             res_data = json.loads(response.read().decode('utf-8'))
+            
+            tracks_list = []
             if 'data' in res_data and len(res_data['data']) > 0:
-                track_info = res_data['data'][0]
-                # Извлекаем прямую, 100% рабочую стриминг-ссылку на аудиопоток
-                if 'preview' in track_info and track_info['preview']:
-                    return {
-                        'title': track_info['title_short'] + " - " + track_info['artist']['name'],
-                        'url': track_info['preview']
-                    }
+                for track in res_data['data']:
+                    # Проверяем, есть ли живой аудиопоток для стриминга
+                    if 'preview' in track and track['preview']:
+                        tracks_list.append({
+                            'title': track['title_short'],
+                            'artist': track['artist']['name'],
+                            'url': track['preview'],
+                            'cover': track['album']['cover_medium']
+                        })
+                return tracks_list
     except Exception as e:
-        print(f"Ошибка API: {e}")
-    return None
+        st.error(f"Ошибка поиска: {e}")
+    return []
 
-# 3. ИНТЕРФЕЙС САЙТА
-st.set_page_config(page_title="Мой Личный ИИ Плееер", page_icon="🎵", layout="centered")
-st.title("🎵 Мой Личный Музыкальный ИИ")
-st.subheader("Стриминг музыки через независимое API без блокировок и рекламы")
+# ИНТЕРФЕЙС САЙТА (Streamlit)
+st.set_page_config(page_title="Мой Личный Плеер", page_icon="🎵", layout="centered")
 
-user_input = st.text_input("Какую музыку тебе найти?", placeholder="Например: саундтреки из игры Дайн Лайт...")
+st.title("🎵 Мой Личный Музыкальный ИИ-Поиск")
+st.subheader("Слушай любую музыку онлайн без рекламы, VPN и блокировок")
 
-if st.button("Создать плейлист ✨"):
-    if not user_input:
-        st.warning("Сначала введите запрос!")
+# Поисковая строка
+user_query = st.text_input("Какую музыку или исполнителя тебе найти?", placeholder="Например: Dying Light, Linkin Park, фонк...")
+
+if st.button("Найти музыку 🚀"):
+    if not user_query:
+        st.warning("Сначала введи название или группу!")
     else:
-        with st.spinner("🧠 Нейросеть генерирует плейлист..."):
-            ai_tracks = get_playlist_from_ai(user_input)
+        with st.spinner("🔍 Обыскиваю глобальные музыкальные сервера..."):
+            found_tracks = search_music_online(user_query)
         
-        if ai_tracks:
-            st.success(f"🤖 ИИ подобрал {len(ai_tracks)} треков! Подключаюсь к аудиопотокам...")
-            for track in ai_tracks:
-                with st.spinner(f"🔍 Загружаю поток для: {track}"):
-                    audio_data = get_audio_url(track)
-                
-                if audio_data:
-                    with st.expander(f"▶️ {audio_data['title']}", expanded=True):
-                        # Играем чистый стриминг-поток, который разрешен для всех браузеров в РФ без VPN
-                        st.audio(audio_data['url'], format='audio/mp3')
-                else:
-                    st.warning(f"❌ Не удалось найти в сети: {track}")
+        if found_tracks:
+            st.success(f"🔥 Успешно найдено {len(found_tracks)} треков! Приятного прослушивания:")
+            
+            for track in found_tracks:
+                # Создаем красивую карточку для каждой песни с обложкой альбома
+                with st.container():
+                    col1, col2 = st.columns([1, 3])
+                    with col1:
+                        st.image(track['cover'], width=100)
+                    with col2:
+                        st.markdown(f"### {track['artist']} — {track['title']}")
+                        # Проигрываем чистый онлайн-поток mp3 напрямую
+                        st.audio(track['url'], format='audio/mp3')
+                    st.markdown("---") # Разделительная полоса
         else:
-            st.error("Не удалось сгенерировать плейлист.")
+            st.error("❌ Ничего не нашлось. Попробуй ввести название точнее (например, на английском).")
