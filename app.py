@@ -1,122 +1,82 @@
 import streamlit as st
-import urllib.request
-import urllib.parse
-import json
-import re
+import google.generativeai as genai
+import yt_dlp
 
-# 1. НЕУБИВАЕМЫЙ ИИ МОЗГ (Работает без ключей, без VPN, выдает большие плейлисты)
+# 1. СВЕЖАЯ НАСТРОЙКА ИИ ПОМОЩНИКА (Актуально для 2026 года)
+# Вставьте сюда ваш ключ AIza... от Google AI Studio (кавычки оставьте)
+GEMINI_API_KEY = "ВАШ_ОФИЦИАЛЬНЫЙ_КЛЮЧ_AIZA" 
+genai.configure(api_key=GEMINI_API_KEY)
+
 def get_playlist_from_ai(user_prompt):
-    """Отправляет запрос к ИИ и получает полноценный список треков"""
+    """Запрашивает плейлист у нейросети"""
+    # Используем самую стабильную рабочую модель
+    model = genai.GenerativeModel("gemini-2.5-flash")
+    
     system_instruction = (
-        "Ты — крутой музыкальный эксперт. Твоя задача — строго по запросу пользователя "
-        "составить плейлист из реально существующих популярных песен. "
-        "Выведи ровно 7 разных треков. Каждая строка должна быть строго в формате: Исполнитель - Название. "
-        "Не пиши никаких вводных слов, цифр, точек и знаков. Только строки вида 'Исполнитель - Название'."
+        "Ты — профессиональный музыкальный эксперт. Твоя задача — строго по запросу пользователя "
+        "составить плейлист из реально существующих песен. Выведи ровно 5 треков. "
+        "Каждая строка должна быть строго в формате: Исполнитель - Название. "
+        "Не пиши никаких лишних слов, вступлений или номеров. Только список треков, один трек на строку."
     )
-    
-    url = "https://open-ai-api.xyz"
-    payload = json.dumps({
-        "model": "gpt-4o-mini",
-        "messages": [
-            {"role": "system", "content": system_instruction},
-            {"role": "user", "content": user_prompt}
-        ]
-    }).encode('utf-8')
-    
-    req = urllib.request.Request(
-        url, data=payload, 
-        headers={'Content-Type': 'application/json', 'User-Agent': 'Mozilla/5.0'}
-    )
-    
     try:
-        with urllib.request.urlopen(req, timeout=10) as response:
-            result = json.loads(response.read().decode('utf-8'))
-            full_text = result['choices']['message']['content']
-            
-            tracks = []
-            for line in full_text.split('\n'):
-                line = line.strip().lstrip('0123456789.- ')
-                if line and " - " in line:
-                    tracks.append(line)
-            return tracks if tracks else ["Pawel Blaszczak - Horizon", "Woodkid - Run Boy Run"]
-    except Exception:
-        # Если ИИ-шлюз перегружен, выдаем качественную базу для Dying Light и рок-миксов
-        return [
-            "Pawel Blaszczak - Horizon",
-            "Pawel Blaszczak - Harran",
-            "Woodkid - Run Boy Run",
-            "Pawel Blaszczak - Passage",
-            "Linkin Park - In The End",
-            "Kordhell - Murder In My Mind"
-        ]
+        response = model.generate_content(f"{system_instruction}\n\nЗапрос пользователя: {user_prompt}")
+        # Очищаем строки от возможного мусора
+        tracks = [line.strip().lstrip('0123456789.- ') for line in response.text.split('\n') if line.strip()]
+        return tracks
+    except Exception as e:
+        st.error(f"Ошибка ИИ: {e}")
+        return []
 
-# 2. ОБХОД БЛОКИРОВОК: ПОИСК АУДИО ЧЕРЕЗ ОТКРЫТЫЕ ИСТОЧНИКИ
-def get_audio_url_free(track_name):
-    """Ищет реальные рабочие MP3 ссылки на открытых музыкальных сайтах"""
-    try:
-        # Формируем поисковый запрос к открытой базе
-        query = urllib.parse.quote(track_name)
-        # Подключаемся к надежному открытому музыкальному API, который ищет музыку по всему рунету
-        url = f"https://deezer.com{query}&limit=1"
-        
-        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-        with urllib.request.urlopen(req, timeout=5) as response:
-            res_data = json.loads(response.read().decode('utf-8'))
-            if 'data' in res_data and len(res_data['data']) > 0:
-                track = res_data['data'][0]
-                # Выдергиваем прямую 30-секундную/полную превью-ссылку на MP3 файл в идеальном качестве
-                if 'preview' in track and track['preview']:
-                    return {'title': track['title'], 'url': track['preview'], 'source': 'Музыкальная База'}
-    except Exception:
-        pass
-        
-    # Резервный шлюз, если первый сайт перегружен
-    try:
-        query_backup = urllib.parse.quote(f"{track_name} mp3")
-        search_url = f"https://duckduckgo.com{query_backup}"
-        req = urllib.request.Request(search_url, headers={'User-Agent': 'Mozilla/5.0'})
-        with urllib.request.urlopen(req, timeout=5) as response:
-            html = response.read().decode('utf-8')
-            links = re.findall(r'href="(https?://[^"]+?\.mp3)"', html)
-            if links:
-                return {'title': track_name, 'url': links[0], 'source': 'Веб-Поиск'}
-    except Exception:
-        pass
-
-    # Если совсем ничего не нашлось, даем гарантированно рабочую тестовую MP3-мелодию, чтобы плеер заиграл
-    return {
-        'title': track_name, 
-        'url': 'https://soundhelix.com', 
-        'source': 'Демо-Поток'
+# 2. УМНЫЙ ПОИСК МУЗЫКИ НА YOUTUBE
+def get_audio_url(track_name):
+    """Ищет аудиопоток на YouTube. На зарубежном сервере блокировки не действуют!"""
+    ydl_opts = {
+        'format': 'bestaudio/best',
+        'noplaylist': True,
+        'quiet': True,
+        'default_search': 'ytsearch',
+        'nocheckcertificate': True
     }
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        try:
+            info = ydl.extract_info(f"ytsearch1:{track_name}", download=False)
+            if 'entries' in info and len(info['entries']) > 0:
+                video_data = info['entries'][0]
+                return {
+                    'title': video_data.get('title'),
+                    'url': video_data.get('url')
+                }
+        except Exception:
+            return None
+    return None
 
-
-# 3. ИНТЕРФЕЙС САЙТА (Streamlit)
-st.set_page_config(page_title="Ультимативный ИИ Плеер", page_icon="🎵")
+# 3. ИНТЕРФЕЙС САЙТА
+st.set_page_config(page_title="Мой Личный ИИ Плеер", page_icon="🎵", layout="centered")
 st.title("🎵 Мой Личный Музыкальный ИИ")
-st.subheader("Умный поиск музыки без VPN, рекламы и блокировок")
+st.subheader("Стриминг музыки через облачный сервер без блокировок и рекламы")
 
 user_input = st.text_input("Какую музыку тебе найти?", placeholder="Например: саундтреки из игры Дайн Лайт...")
 
 if st.button("Создать плейлист ✨"):
     if not user_input:
         st.warning("Сначала введите запрос!")
+    elif GEMINI_API_KEY == "ВАШ_ОФИЦИАЛЬНЫЙ_КЛЮЧ_AIZA":
+        st.error("Пожалуйста, вставьте ваш настоящий API-ключ в код на 7-ю строчку.")
     else:
-        with st.spinner("🧠 Нейросеть генерирует большой плейлист..."):
+        with st.spinner("🧠 Нейросеть генерирует плейлист..."):
             ai_tracks = get_playlist_from_ai(user_input)
         
         if ai_tracks:
-            st.success(f"🤖 ИИ составил плейлист из {len(ai_tracks)} треков! Начинаю обход блокировок...")
-            
+            st.success(f"🤖 ИИ подобрал {len(ai_tracks)} треков! Подключаюсь к аудиопотокам...")
             for track in ai_tracks:
-                with st.spinner(f"🔍 Извлекаю аудиопоток для: {track}"):
-                    audio_data = get_audio_url_free(track)
+                with st.spinner(f"🔍 Загружаю поток для: {track}"):
+                    audio_data = get_audio_url(track)
                 
                 if audio_data:
-                    with st.expander(f"▶️ {track} [Источник: {audio_data['source']}]", expanded=True):
-                        # Воспроизводим чистый MP3 файл без ограничений стримингов
+                    with st.expander(f"▶️ {audio_data['title']}", expanded=True):
+                        # Играем прямую ссылку с серверов YouTube через облачный прокси-сервер
                         st.audio(audio_data['url'], format='audio/mp3')
                 else:
-                    st.warning(f"❌ Не удалось загрузить: {track}")
+                    st.warning(f"❌ Не удалось найти в сети: {track}")
         else:
             st.error("Не удалось сгенерировать плейлист.")
